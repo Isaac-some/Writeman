@@ -41,6 +41,15 @@ class WritemanConfigTests(unittest.TestCase):
             errors = CHECKER.publication_errors(root)
             self.assertTrue(any("writeman.local.json" in error for error in errors))
 
+    def test_publication_check_rejects_generic_secret_in_allowed_template(self):
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            config = root / "config"
+            config.mkdir()
+            (config / "writeman.example.json").write_text(json.dumps({"token": "synthetic-" + "secret-" + "value-" + "123456"}))
+            errors = CHECKER.publication_errors(root)
+            self.assertTrue(any("private marker" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

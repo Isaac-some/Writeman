@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -17,29 +18,47 @@ PATTERNS = [
     re.compile(rb"https?://[^\s\"<>]*(?:feishu|larksuite)\.(?:cn|com)[^\s\"<>]*", re.I),
     re.compile(rb"\b(?:ou_|cli_)[a-f0-9]{16,}\b", re.I),
     re.compile(rb"\b(?:base|table|record)_token\s*[:=]\s*[A-Za-z0-9_-]{8,}", re.I),
+    re.compile(rb"\b(?:token|secret|password|api[_-]?key|access[_-]?key)\b\s*[\"']?\s*[:=]\s*[\"']?[A-Za-z0-9_./+=-]{24,}", re.I),
     re.compile(rb"\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})\b"),
     re.compile(rb"-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----"),
 ]
 
 
 def publication_errors(root: Path = ROOT) -> list[str]:
-    errors = []
+    errors = set()
+
+    def inspect(relative: Path, body: bytes) -> None:
+        if not relative.parts or relative.parts[0] not in ALLOWED_ROOTS and str(relative) not in ALLOWED_FILES:
+            errors.add(f"outside publication allowlist: {relative}")
+            return
+        if relative.name in FORBIDDEN_NAMES or relative.suffix.lower() in {".log", ".jsonl", ".mp4", ".mov", ".png"}:
+            errors.add(f"runtime or evidence artifact: {relative}")
+            return
+        if any(pattern.search(body) for pattern in PATTERNS):
+            errors.add(f"private marker: {relative}")
+
     for path in sorted(root.rglob("*")):
         if not path.is_file() or ".git" in path.parts:
             continue
         if "__pycache__" in path.parts or path.suffix == ".pyc":
             continue
         relative = path.relative_to(root)
-        if relative.parts[0] not in ALLOWED_ROOTS and str(relative) not in ALLOWED_FILES:
-            errors.append(f"outside publication allowlist: {relative}")
-            continue
-        if path.name in FORBIDDEN_NAMES or path.suffix.lower() in {".log", ".jsonl", ".mp4", ".mov", ".png"}:
-            errors.append(f"runtime or evidence artifact: {relative}")
-            continue
-        body = path.read_bytes()
-        if any(pattern.search(body) for pattern in PATTERNS):
-            errors.append(f"private marker: {relative}")
-    return errors
+        inspect(relative, path.read_bytes())
+
+    staged = subprocess.run(
+        ["git", "ls-files", "--cached", "-z"], cwd=root, capture_output=True, check=False
+    )
+    if staged.returncode == 0 and staged.stdout:
+        for raw_path in staged.stdout.split(b"\0"):
+            if not raw_path:
+                continue
+            relative = Path(raw_path.decode("utf-8"))
+            blob = subprocess.run(
+                ["git", "show", f":{relative.as_posix()}"], cwd=root, capture_output=True, check=False
+            )
+            if blob.returncode == 0:
+                inspect(relative, blob.stdout)
+    return sorted(errors)
 
 
 def main() -> int:
