@@ -1,0 +1,28 @@
+{
+  "timezone": "Asia/Shanghai",
+  "recordings_dir": "~/Blurt/recordings",
+  "reference_document_id": "",
+  "feishu_targets": [
+    {
+      "name": "task-source",
+      "type": "wiki",
+      "token": ""
+    },
+    {
+      "name": "weekly-status",
+      "type": "bitable",
+      "token": ""
+    },
+    {
+      "name": "weekly-reference",
+      "type": "docx",
+      "token": ""
+    }
+  ],
+  "business_area_rules": [
+    "Classify work by business ownership, not by technology keywords.",
+    "The configured Machine Annotation product takes precedence for work belonging to that product, including AI agents built for it.",
+    "AI Efficiency covers productivity deployments outside that product and coding work intended to reduce engineering effort.",
+    "Never invent savings figures; ask when ownership is unclear."
+  ]
+}

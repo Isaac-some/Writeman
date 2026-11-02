@@ -1,0 +1,16 @@
+.DS_Store
+.env
+.env.*
+!*.example
+!writeman.example.json
+config/writeman.local.json
+agent.local.json
+state/
+runs/
+recordings/
+verification/
+*.mp4
+*.mov
+*.jsonl
+__pycache__/
+*.py[cod]
